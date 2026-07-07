@@ -7,6 +7,7 @@ Stores pre-computed embeddings (ChromaDB does not manage embedding).
 """
 
 import logging
+import time
 from typing import List, Dict, Optional
 
 from src.embedding_lanes import (
@@ -26,16 +27,19 @@ class MemoryVectorStore:
     """Vector index over memory entries for semantic retrieval."""
 
     COLLECTION_NAME = "odysseus_memories"
+    _RETRY_INTERVAL = 30.0
 
     def __init__(self, data_dir: str, embedding_model=None):
         self._model = embedding_model
         self._collection = None
         self._lanes = []
         self._healthy = False
+        self._last_attempt = 0.0
 
         self._initialize()
 
     def _initialize(self):
+        self._last_attempt = time.monotonic()
         try:
             self._lanes = build_embedding_lanes(self.COLLECTION_NAME)
             if not self._lanes:
@@ -54,10 +58,12 @@ class MemoryVectorStore:
             )
 
         except Exception as e:
-            logger.error(f"MemoryVectorStore init failed: {e}")
+            logger.error(f"MemoryVectorStore init failed (will retry in {self._RETRY_INTERVAL}s): {e}")
 
     @property
     def healthy(self) -> bool:
+        if not self._healthy and time.monotonic() - self._last_attempt >= self._RETRY_INTERVAL:
+            self._initialize()
         return self._healthy
 
     def _embed(self, texts: List[str]) -> List[List[float]]:
