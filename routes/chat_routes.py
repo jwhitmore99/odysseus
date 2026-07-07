@@ -870,6 +870,7 @@ def setup_chat_routes(
 
         # Build disabled-tools set from frontend toggles + user privileges
         disabled_tools = set()
+        _explicit_web_intent = False  # TODO: upstream bug — variable used but never set; defaulting to old behavior
         # Only disable bash/web_search when the caller *explicitly* set them
         # to a falsy value.  When unset (None), defer to per-user privilege
         # checks below — this lets admins with can_use_bash=True use bash
