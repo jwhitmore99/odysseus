@@ -1,7 +1,6 @@
 services:
   odysseus:
     build: .
-    gpus: all
     ports:
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-7000}:7000"
     volumes:
@@ -17,7 +16,6 @@ services:
       # land under /app/.local for the odysseus user. Persist them so a
       # container recreate does not silently remove installed serve engines.
       - ${APP_DATA_DIR:-./data}/local:/app/.local:z
-      - ./data/flashinfer:/app/.cache/flashinfer:z
     extra_hosts:
       # Lets the container reach local services on the Docker host, including
       # Ollama at http://host.docker.internal:11434.
@@ -72,15 +70,12 @@ services:
       # Find yours with:  id -u  /  id -g
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
-      - XDG_CACHE_HOME=/tmp
-      - FLASHINFER_WORKSPACE_DIR=/tmp/flashinfer
-      - HF_HOME=/tmp/huggingface
     depends_on:
       searxng:
         condition: service_healthy
       chromadb:
         condition: service_started
-    restart: on-failure
+    restart: unless-stopped
 
   chromadb:
     image: docker.io/chromadb/chroma:latest
@@ -90,7 +85,7 @@ services:
       - chromadb-data:/chroma/chroma
     environment:
       - ANONYMIZED_TELEMETRY=FALSE
-    restart: on-failure
+    restart: unless-stopped
 
   searxng:
     # Pinned, not :latest — odysseus waits on searxng's healthcheck
@@ -140,7 +135,7 @@ services:
       timeout: 6s
       retries: 20
       start_period: 10s
-    restart: on-failure
+    restart: unless-stopped
 
   ntfy:
     image: docker.io/binwiederhier/ntfy
@@ -151,7 +146,7 @@ services:
       - ntfy-cache:/var/cache/ntfy
     environment:
       - NTFY_BASE_URL=${NTFY_BASE_URL:-http://localhost:8091}
-    restart: on-failure
+    restart: unless-stopped
 
 volumes:
   searxng-data:
